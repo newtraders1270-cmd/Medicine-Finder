@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medicine Availability Finder - Real-Time Stock & Price Comparison</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome 6 Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+    <!-- Leaflet Maps CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        :root {
+            --primary-teal: #064e40;
+            --teal-accent: #0d8a74;
+            --teal-accent-hover: #0a6f5d;
+            --mint-badge: #14b8a6;
+            --body-bg: #ffffff;
+            --text-heading: #0a3d36;
+            --text-sub: #4b5563;
+            --border-light: #e5e7eb;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--body-bg);
+            color: #1f2937;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .navbar-custom {
+            background-color: var(--primary-teal);
+            padding: 0.85rem 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        .brand-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            text-decoration: none;
+        }
+
+        .brand-icon {
+            width: 32px;
+            height: 32px;
+            background-color: var(--mint-badge);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1rem;
+        }
+
+        .brand-title {
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 1.22rem;
+            margin: 0;
+        }
+
+        .nav-pill-btn {
+            background-color: var(--teal-accent);
+            color: #ffffff !important;
+            border-radius: 9999px;
+            padding: 0.45rem 1.25rem;
+            font-size: 0.88rem;
+            font-weight: 600;
+            text-decoration: none;
+            border: none;
+        }
+
+        .nav-pill-outline {
+            background-color: transparent;
+            color: #ffffff !important;
+            border-radius: 9999px;
+            padding: 0.45rem 1.25rem;
+            font-size: 0.88rem;
+            font-weight: 600;
+            text-decoration: none;
+            border: 1px solid rgba(255, 255, 255, 0.45);
+        }
+
+        .hero-container {
+            padding: 4rem 1rem 2rem 1rem;
+            text-align: center;
+        }
+
+        .hero-heading {
+            color: var(--text-heading);
+            font-weight: 800;
+            font-size: 2.35rem;
+            letter-spacing: -0.5px;
+            margin-bottom: 0.75rem;
+        }
+
+        .hero-subtitle {
+            color: var(--text-sub);
+            font-size: 1.05rem;
+            max-width: 680px;
+            margin: 0 auto 2.25rem auto;
+            line-height: 1.5;
+        }
+
+        .pill-search-container {
+            max-width: 680px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .pill-search-box {
+            display: flex;
+            align-items: center;
+            background: #ffffff;
+            border: 1.5px solid #d1d5db;
+            border-radius: 9999px;
+            padding: 6px 8px 6px 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+            transition: all 0.2s ease;
+        }
+
+        .pill-search-box:focus-within {
+            border-color: var(--teal-accent);
+            box-shadow: 0 0 0 4px rgba(13, 138, 116, 0.12);
+        }
+
+        .pill-search-input {
+            border: none;
+            outline: none;
+            width: 100%;
+            font-size: 1rem;
+            color: #374151;
+            background: transparent;
+        }
+
+        .pill-search-btn {
+            background-color: var(--teal-accent);
+            color: #ffffff;
+            border: none;
+            border-radius: 9999px;
+            padding: 0.55rem 1.6rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        #suggestions-box {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 20px;
+            right: 20px;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 1rem;
+            box-shadow: 0 12px 24px -4px rgba(0, 0, 0, 0.12);
+            z-index: 1050;
+            max-height: 280px;
+            overflow-y: auto;
+            display: none;
+            text-align: left;
+        }
+
+        .suggestion-item {
+            padding: 0.8rem 1.2rem;
+            cursor: pointer;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .suggestion-item:hover {
+            background-color: #f0fdf4;
+        }
+
+        .sort-container {
+            max-width: 680px;
+            margin: 1.5rem auto 2.5rem auto;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .sort-select {
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 0.35rem 0.85rem;
+            font-size: 0.88rem;
+            color: #374151;
+            outline: none;
+        }
+
+        .card-medicine {
+            background: #ffffff;
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card-medicine:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.06);
+        }
+
+        .badge-in-stock {
+            background-color: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+            font-weight: 600;
+            border-radius: 6px;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        .badge-low-stock {
+            background-color: #fffbeb;
+            color: #92400e;
+            border: 1px solid #fde68a;
+            font-weight: 600;
+            border-radius: 6px;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        .badge-generic {
+            background-color: #ecfdf5;
+            color: #047857;
+            font-weight: 600;
+            border-radius: 6px;
+            font-size: 0.75rem;
+        }
+
+        .badge-brand {
+            background-color: #eff6ff;
+            color: #1d4ed8;
+            font-weight: 600;
+            border-radius: 6px;
+            font-size: 0.75rem;
+        }
+
+        .price-text {
+            color: var(--teal-accent);
+            font-weight: 700;
+            font-size: 1.35rem;
+        }
+
+        .site-footer {
+            margin-top: auto;
+            padding: 2.5rem 1rem;
+            text-align: center;
+            border-top: 1px solid #f3f4f6;
+            color: #6b7280;
+            font-size: 0.85rem;
+        }
+
+        #map {
+            height: 400px;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navbar -->
+    <header class="navbar-custom">
+        <div class="container d-flex justify-content-between align-items-center">
+            <a href="#" class="brand-wrapper" onclick="resetSearch()">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-pills"></i>
+                </div>
+                <span class="brand-title">Medicine Availability Finder</span>
+            </a>
+
+            <div class="d-flex align-items-center gap-2">
+                <a href="#" class="nav-pill-btn" onclick="resetSearch()">
+                    Find Medicine
+                </a>
+                <button class="nav-pill-outline" onclick="openPharmacyPortalModal()">
+                    Pharmacy Portal
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow-1">
+        <div class="container">
+            <!-- Hero Section -->
+            <div class="hero-container">
+                <h1 class="hero-heading">
+                    Find the medicine. Check availability. Reserve before you visit.
+                </h1>
+                <p class="hero-subtitle">
+                    Search nearby pharmacies for real-time stock, compare prices, and reserve &mdash; no wasted trips.
+                </p>
+
+                <!-- Search Bar Container -->
+                <div class="pill-search-container">
+                    <div class="pill-search-box">
+                        <input type="text" id="medicine-search-input" class="pill-search-input" 
+                            placeholder="Search medicine... e.g. Paracetamol" autocomplete="off">
+                        <button type="button" class="pill-search-btn" onclick="performSearch()">
+                            Search
+                        </button>
+                    </div>
+                    <div id="suggestions-box"></div>
+                </div>
+
+                <!-- Sort Control -->
+                <div class="sort-container">
+                    <select id="sort-select" class="sort-select" onchange="renderResults()">
+                        <option value="nearest">Sort: Nearest first</option>
+                        <option value="price_asc">Sort: Lowest price first</option>
+                        <option value="stock_desc">Sort: Highest stock first</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Generic Substitution Savings Banner -->
+            <div id="generic-advice-box" class="card border-0 rounded-4 p-4 mb-4 shadow-sm" style="display: none; background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); border: 1.5px solid #86efac !important;">
+                <div class="row align-items-center g-3">
+                    <div class="col-lg-8">
+                        <span class="badge bg-success mb-2 px-3 py-1"><i class="fa-solid fa-leaf me-1"></i> Smart Healthcare Advice</span>
+                        <h4 class="fw-bold text-dark mb-1" id="advice-title">Cheaper Generic Alternative Available!</h4>
+                        <p class="text-secondary small mb-0" id="advice-text"></p>
+                    </div>
+                    <div class="col-lg-4 text-lg-end" id="advice-action"></div>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div id="results-header" class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold text-dark mb-0">
+                    <i class="fa-solid fa-store me-1" style="color: var(--teal-accent);"></i> 
+                    <span id="results-title">Popular Medicines in Nearby Pharmacies</span>
+                </h5>
+                <span class="text-muted small" id="results-count">4 pharmacies reporting</span>
+            </div>
+
+            <div class="row g-4 mb-5" id="results-grid"></div>
+
+            <!-- Pharmacy Locator Map Section -->
+            <div class="card p-4 rounded-4 shadow-sm border-0 mb-5">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-dark mb-0">
+                        <i class="fa-solid fa-map-location-dot text-danger me-2"></i> Verified Pharmacy Locator Map
+                    </h5>
+                    <span class="badge bg-light text-dark border">4 Stores Active</span>
+                </div>
+                <div id="map"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Reservation Modal -->
+    <div class="modal fade" id="reserveModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content rounded-4">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Reserve Medicine at Counter</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="p-3 bg-light rounded-3 mb-3">
+                        <h6 class="fw-bold mb-1 text-dark" id="modal-med-name"></h6>
+                        <p class="small text-muted mb-0" id="modal-store-name"></p>
+                        <p class="small text-success fw-bold mb-0" id="modal-price"></p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Quantity to Reserve:</label>
+                        <input type="number" id="modal-qty" class="form-control" value="1" min="1" max="10">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Your Contact Number / Pickup Note:</label>
+                        <input type="text" id="modal-note" class="form-control" placeholder="e.g. 9820011223, Pickup around 5 PM">
+                    </div>
+
+                    <div class="alert alert-info small mb-0 rounded-3">
+                        <i class="fa-solid fa-circle-info me-1"></i> 
+                        You will receive an instant 6-digit booking voucher. Pay directly at the pharmacy counter.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn rounded-pill px-4" style="background-color: var(--teal-accent); color: white; font-weight: 600;" onclick="confirmReservation()">
+                        Confirm Reservation
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Booking Confirmation Modal -->
+    <div class="modal fade" id="successModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content rounded-4 text-center p-4">
+                <div class="p-3 bg-success-subtle text-success rounded-circle d-inline-block mx-auto mb-3" style="width: 64px; height: 64px;">
+                    <i class="fa-solid fa-check fa-2x"></i>
+                </div>
+                <h4 class="fw-bold text-dark mb-1">Reservation Confirmed!</h4>
+                <p class="text-muted small">Show this booking token at the pharmacy counter to collect and pay:</p>
+                
+                <div class="p-3 bg-light rounded-3 border my-3">
+                    <span class="text-muted small d-block">Your Booking Token</span>
+                    <h2 class="fw-bold text-primary font-monospace mb-0" id="token-display">MED-889102</h2>
+                </div>
+
+                <p class="small text-muted mb-4" id="success-details"></p>
+                <button type="button" class="btn rounded-pill w-100 py-2" style="background-color: var(--teal-accent); color: white; font-weight: 600;" data-bs-dismiss="modal">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pharmacy Portal Info Modal -->
+    <div class="modal fade" id="portalModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content rounded-4 p-4">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-clinic-medical text-teal me-2"></i>Pharmacy & Supplier Portal</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-secondary small">
+                        This live demo version runs entirely on <strong>GitHub Pages</strong> with client-side interactive search, price comparisons, and reservation vouchers!
+                    </p>
+                    <div class="p-3 bg-light rounded-3 border small mb-3">
+                        <strong class="d-block text-dark mb-1"><i class="fa-solid fa-server text-primary me-1"></i> Full Backend Python Version:</strong>
+                        The complete repository includes Python Flask, SQLite database, Chemist inventory dashboards, and Wholesale restock pipelines. Run <code>run.bat</code> on your local computer to access the multi-role portals!
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-secondary rounded-pill w-100" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer matching screenshot -->
+    <footer class="site-footer">
+        <div class="container">
+            Medicine Availability Finder — Mini Project &middot; T.Y.C.S. &middot; Kaustubh Naresh Mhatre (Roll No. 66) &middot; Guide: Zeba Kuwari
+        </div>
+    </footer>
+
+    <!-- Bootstrap Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // Database of Pharmacies & Medicines for Live GitHub Pages Demo
+        const STORES = [
+            { id: 1, name: "Apollo Pharmacy", area: "Andheri West", city: "Mumbai", phone: "022-26281122", hours: "24 Hours Open", lat: 19.1352, lng: 72.8315, distance: 1.2 },
+            { id: 2, name: "Wellness Forever", area: "Bandra West", city: "Mumbai", phone: "022-26402233", hours: "24 Hours Open", lat: 19.0544, lng: 72.8282, distance: 3.5 },
+            { id: 3, name: "Sanjivani Chemist", area: "Dadar East", city: "Mumbai", phone: "022-24123344", hours: "8:00 AM - 11:30 PM", lat: 19.0178, lng: 72.8478, distance: 5.1 },
+            { id: 4, name: "MedPlus Pharmacy", area: "Borivali West", city: "Mumbai", phone: "022-28914455", hours: "8:30 AM - 11:00 PM", lat: 19.2307, lng: 72.8567, distance: 8.4 }
+        ];
+
+        const INVENTORY = [
+            // Paracetamol 650 Brand vs Generic
+            { id: 1, medName: "Dolo 650", genericName: "Paracetamol", strength: "650 mg", isGeneric: false, mrp: 33.50, storeId: 3, price: 29.50, stock: 80 },
+            { id: 2, medName: "Dolo 650", genericName: "Paracetamol", strength: "650 mg", isGeneric: false, mrp: 33.50, storeId: 2, price: 31.00, stock: 60 },
+            { id: 3, medName: "Dolo 650", genericName: "Paracetamol", strength: "650 mg", isGeneric: false, mrp: 33.50, storeId: 1, price: 32.00, stock: 45 },
+            { id: 4, medName: "Paracetamol 650mg Generic", genericName: "Paracetamol", strength: "650 mg", isGeneric: true, mrp: 11.50, storeId: 3, price: 9.50, stock: 100 },
+            { id: 5, medName: "Paracetamol 650mg Generic", genericName: "Paracetamol", strength: "650 mg", isGeneric: true, mrp: 11.50, storeId: 1, price: 11.00, stock: 30 },
+
+            // Augmentin 625 Brand vs Generic
+            { id: 6, medName: "Augmentin 625 Duo", genericName: "Amoxicillin + Potassium Clavulanate", strength: "625 mg", isGeneric: false, mrp: 223.00, storeId: 3, price: 205.00, stock: 15 },
+            { id: 7, medName: "Augmentin 625 Duo", genericName: "Amoxicillin + Potassium Clavulanate", strength: "625 mg", isGeneric: false, mrp: 223.00, storeId: 2, price: 210.00, stock: 20 },
+            { id: 8, medName: "Augmentin 625 Duo", genericName: "Amoxicillin + Potassium Clavulanate", strength: "625 mg", isGeneric: false, mrp: 223.00, storeId: 1, price: 215.00, stock: 18 },
+            { id: 9, medName: "Amoxyclav 625 Generic", genericName: "Amoxicillin + Potassium Clavulanate", strength: "625 mg", isGeneric: true, mrp: 72.00, storeId: 3, price: 65.00, stock: 40 },
+
+            // Pantocid 40 Brand vs Generic
+            { id: 10, medName: "Pantocid 40", genericName: "Pantoprazole", strength: "40 mg", isGeneric: false, mrp: 168.00, storeId: 2, price: 158.00, stock: 28 },
+            { id: 11, medName: "Pantocid 40", genericName: "Pantoprazole", strength: "40 mg", isGeneric: false, mrp: 168.00, storeId: 1, price: 160.00, stock: 4 },
+            { id: 12, medName: "Pantoprazole 40mg Generic", genericName: "Pantoprazole", strength: "40 mg", isGeneric: true, mrp: 42.00, storeId: 2, price: 39.00, stock: 45 },
+
+            // Azithral 500 Brand vs Generic
+            { id: 13, medName: "Azithral 500", genericName: "Azithromycin", strength: "500 mg", isGeneric: false, mrp: 132.50, storeId: 3, price: 122.00, stock: 20 },
+            { id: 14, medName: "Azithromycin 500mg Generic", genericName: "Azithromycin", strength: "500 mg", isGeneric: true, mrp: 49.00, storeId: 3, price: 44.00, stock: 60 },
+
+            // Montair LC & Combiflam
+            { id: 15, medName: "Montair LC", genericName: "Montelukast + Levocetirizine", strength: "10mg + 5mg", isGeneric: false, mrp: 215.00, storeId: 4, price: 200.00, stock: 14 },
+            { id: 16, medName: "Combiflam", genericName: "Ibuprofen + Paracetamol", strength: "400mg + 325mg", isGeneric: false, mrp: 47.50, storeId: 4, price: 44.00, stock: 35 }
+        ];
+
+        let currentSearchQuery = "";
+        let selectedItemForReserve = null;
+        let mapInstance = null;
+
+        document.addEventListener("DOMContentLoaded", function () {
+            initLeafletMap();
+            renderResults();
+            setupSearchAutocomplete();
+        });
+
+        function setupSearchAutocomplete() {
+            const input = document.getElementById("medicine-search-input");
+            const box = document.getElementById("suggestions-box");
+
+            input.addEventListener("input", function () {
+                const q = this.value.trim().toLowerCase();
+                if (q.length < 2) {
+                    box.style.display = "none";
+                    return;
+                }
+
+                const matches = INVENTORY.filter(item => 
+                    item.medName.toLowerCase().includes(q) || 
+                    item.genericName.toLowerCase().includes(q)
+                ).slice(0, 6);
+
+                if (matches.length > 0) {
+                    box.innerHTML = matches.map(m => `
+                        <div class="suggestion-item d-flex justify-content-between align-items-center" onclick="selectSuggestion('${m.medName}')">
+                            <div>
+                                <strong>${m.medName}</strong>
+                                <small class="text-muted d-block">${m.genericName} &bull; ${m.strength}</small>
+                            </div>
+                            <div>
+                                <span class="badge ${m.isGeneric ? 'badge-generic' : 'badge-brand'}">${m.isGeneric ? 'Generic' : 'Brand'}</span>
+                            </div>
+                        </div>
+                    `).join("");
+                    box.style.display = "block";
+                } else {
+                    box.style.display = "none";
+                }
+            });
+
+            document.addEventListener("click", function (e) {
+                if (!input.contains(e.target) && !box.contains(e.target)) {
+                    box.style.display = "none";
+                }
+            });
+
+            input.addEventListener("keydown", function (e) {
+                if (e.key === "Enter") {
+                    performSearch();
+                }
+            });
+        }
+
+        function selectSuggestion(name) {
+            document.getElementById("medicine-search-input").value = name;
+            document.getElementById("suggestions-box").style.display = "none";
+            performSearch();
+        }
+
+        function performSearch() {
+            currentSearchQuery = document.getElementById("medicine-search-input").value.trim().toLowerCase();
+            document.getElementById("suggestions-box").style.display = "none";
+            renderResults();
+        }
+
+        function resetSearch() {
+            currentSearchQuery = "";
+            document.getElementById("medicine-search-input").value = "";
+            renderResults();
+        }
+
+        function renderResults() {
+            const grid = document.getElementById("results-grid");
+            const sortType = document.getElementById("sort-select").value;
+            const adviceBox = document.getElementById("generic-advice-box");
+
+            let filtered = INVENTORY.slice();
+
+            if (currentSearchQuery) {
+                filtered = filtered.filter(i => 
+                    i.medName.toLowerCase().includes(currentSearchQuery) || 
+                    i.genericName.toLowerCase().includes(currentSearchQuery)
+                );
+            }
+
+            // Check if generic advice applies
+            if (currentSearchQuery) {
+                const brandMatch = filtered.find(i => !i.isGeneric);
+                const genericMatch = INVENTORY.find(i => 
+                    i.isGeneric && brandMatch && i.genericName.toLowerCase() === brandMatch.genericName.toLowerCase()
+                );
+
+                if (brandMatch && genericMatch) {
+                    const savings = (brandMatch.mrp - genericMatch.price).toFixed(2);
+                    const pct = Math.round((savings / brandMatch.mrp) * 100);
+                    const store = STORES.find(s => s.id === genericMatch.storeId);
+
+                    document.getElementById("advice-text").innerHTML = `
+                        You searched for branded <strong>${brandMatch.medName}</strong> (MRP ₹${brandMatch.mrp.toFixed(2)}). 
+                        Medically identical bioequivalent <strong>${genericMatch.medName}</strong> is available at 
+                        <strong class="text-teal">${store.name}</strong> for only <strong class="text-success fs-6">₹${genericMatch.price.toFixed(2)}</strong>!
+                        <span class="badge bg-white text-success border border-success ms-2">Save ₹${savings} (${pct}% OFF)</span>
+                    `;
+                    document.getElementById("advice-action").innerHTML = `
+                        <button class="btn rounded-pill px-4" style="background-color: var(--teal-accent); color: white; font-weight: 600;" onclick="selectSuggestion('${genericMatch.medName}')">
+                            View Generic Option &rarr;
+                        </button>
+                    `;
+                    adviceBox.style.display = "block";
+                } else {
+                    adviceBox.style.display = "none";
+                }
+            } else {
+                adviceBox.style.display = "none";
+            }
+
+            // Sorting
+            filtered.sort((a, b) => {
+                const storeA = STORES.find(s => s.id === a.storeId);
+                const storeB = STORES.find(s => s.id === b.storeId);
+                if (sortType === "price_asc") return a.price - b.price;
+                if (sortType === "stock_desc") return b.stock - a.stock;
+                return storeA.distance - storeB.distance; // nearest default
+            });
+
+            // Find lowest price item for badge
+            const lowestPrice = filtered.length > 0 ? Math.min(...filtered.map(f => f.price)) : 0;
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-12 text-center py-5">
+                        <i class="fa-solid fa-magnifying-glass fa-3x text-muted mb-3"></i>
+                        <h5 class="fw-bold text-dark">No medicines found matching "${currentSearchQuery}"</h5>
+                        <p class="text-muted small">Try searching for "Paracetamol", "Dolo 650", "Augmentin", or "Pantocid".</p>
+                        <button class="btn btn-outline-teal rounded-pill px-4 mt-2" onclick="resetSearch()">View All Medicines</button>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = filtered.map(item => {
+                const store = STORES.find(s => s.id === item.storeId);
+                const isBest = item.price === lowestPrice;
+                const isLowStock = item.stock <= 10;
+                const discount = Math.round(((item.mrp - item.price) / item.mrp) * 100);
+
+                return `
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card card-medicine h-100 p-3 shadow-sm">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <h6 class="fw-bold mb-0 text-dark">${store.name}</h6>
+                                    <small class="text-muted"><i class="fa-solid fa-location-dot text-danger"></i> ${store.area} (${store.distance} km away)</small>
+                                </div>
+                                ${isBest ? '<span class="badge bg-warning text-dark px-2 py-1 fw-bold rounded-pill"><i class="fa-solid fa-star me-1"></i> Best Price</span>' : ''}
+                            </div>
+
+                            <div class="p-2 bg-light rounded-3 my-2">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <strong class="text-dark">${item.medName}</strong>
+                                    <span class="badge ${item.isGeneric ? 'badge-generic' : 'badge-brand'}">${item.isGeneric ? 'Generic' : 'Brand'}</span>
+                                </div>
+                                <small class="text-muted d-block">${item.genericName} &bull; ${item.strength}</small>
+                            </div>
+
+                            <div class="row g-2 align-items-center my-2">
+                                <div class="col-7">
+                                    <span class="price-text">₹${item.price.toFixed(2)}</span>
+                                    ${item.mrp > item.price ? `<span class="text-muted text-decoration-line-through small ms-1">₹${item.mrp.toFixed(2)}</span><small class="text-success fw-bold d-block">${discount}% OFF</small>` : ''}
+                                </div>
+                                <div class="col-5 text-end">
+                                    ${isLowStock ? `<span class="badge-low-stock">Low: ${item.stock} left</span>` : `<span class="badge-in-stock">In Stock (${item.stock})</span>`}
+                                </div>
+                            </div>
+
+                            <div class="small text-muted mb-3 border-top pt-2">
+                                <div><i class="fa-solid fa-phone me-1" style="color: var(--teal-accent);"></i> ${store.phone}</div>
+                                <div><i class="fa-regular fa-clock me-1"></i> ${store.hours}</div>
+                            </div>
+
+                            <div class="mt-auto d-flex gap-2">
+                                <a href="https://www.google.com/maps/dir/?api=1&destination=${store.lat},${store.lng}" target="_blank" class="btn btn-outline-secondary btn-sm flex-fill rounded-pill">
+                                    <i class="fa-solid fa-directions me-1"></i> Directions
+                                </a>
+                                <button type="button" class="btn btn-sm flex-fill rounded-pill" style="background-color: var(--teal-accent); color: white; font-weight: 600;" onclick="openReserveModal(${item.id})">
+                                    <i class="fa-solid fa-receipt me-1"></i> Reserve
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        function initLeafletMap() {
+            mapInstance = L.map('map').setView([19.0760, 72.8777], 11);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 18,
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(mapInstance);
+
+            const pharmacyIcon = L.divIcon({
+                className: 'custom-pin',
+                html: `<div style="background-color: #0d8a74; color: white; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border: 2px solid white;">
+                        <i class="fa-solid fa-prescription-bottle-medical" style="font-size: 16px;"></i>
+                       </div>`,
+                iconSize: [34, 34],
+                iconAnchor: [17, 34],
+                popupAnchor: [0, -30]
+            });
+
+            STORES.forEach(s => {
+                const marker = L.marker([s.lat, s.lng], { icon: pharmacyIcon }).addTo(mapInstance);
+                marker.bindPopup(`
+                    <div style="font-family: 'Segoe UI', sans-serif;">
+                        <h6 style="color: #064e40; font-weight: bold; margin-bottom: 2px;">${s.name}</h6>
+                        <small style="color: #64748b;">${s.area}, ${s.city}<br>Phone: ${s.phone}</small>
+                        <div style="margin-top: 6px;">
+                            <a href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}" target="_blank" style="font-size: 11px; color: #0d8a74; font-weight: 600;">
+                                Get Directions &rarr;
+                            </a>
+                        </div>
+                    </div>
+                `);
+            });
+        }
+
+        function openReserveModal(itemId) {
+            selectedItemForReserve = INVENTORY.find(i => i.id === itemId);
+            const store = STORES.find(s => s.id === selectedItemForReserve.storeId);
+
+            document.getElementById("modal-med-name").innerText = `${selectedItemForReserve.medName} (${selectedItemForReserve.strength})`;
+            document.getElementById("modal-store-name").innerText = `Pharmacy: ${store.name} - ${store.area}`;
+            document.getElementById("modal-price").innerText = `Price: ₹${selectedItemForReserve.price.toFixed(2)} per unit`;
+
+            new bootstrap.Modal(document.getElementById("reserveModal")).show();
+        }
+
+        function confirmReservation() {
+            const qty = document.getElementById("modal-qty").value;
+            const note = document.getElementById("modal-note").value;
+            const store = STORES.find(s => s.id === selectedItemForReserve.storeId);
+            const code = "MED-" + Math.floor(100000 + Math.random() * 900000);
+
+            // Hide reserve modal
+            bootstrap.Modal.getInstance(document.getElementById("reserveModal")).hide();
+
+            // Set confirmation details
+            document.getElementById("token-display").innerText = code;
+            document.getElementById("success-details").innerHTML = `
+                Reserved: <strong>${qty} unit(s) of ${selectedItemForReserve.medName}</strong><br>
+                Collect at: <strong>${store.name} (${store.area})</strong><br>
+                Total Payable at Counter: <strong>₹${(selectedItemForReserve.price * qty).toFixed(2)}</strong>
+            `;
+
+            new bootstrap.Modal(document.getElementById("successModal")).show();
+        }
+
+        function openPharmacyPortalModal() {
+            new bootstrap.Modal(document.getElementById("portalModal")).show();
+        }
+    </script>
+</body>
+</html>
+

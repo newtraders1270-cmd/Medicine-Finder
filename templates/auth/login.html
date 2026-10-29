@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}Log In - MediCompare{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-5 col-md-7">
+            <div class="card shadow-sm border-0 p-4">
+                <div class="text-center mb-4">
+                    <span class="p-3 bg-primary-subtle text-primary rounded-circle d-inline-block mb-2">
+                        <i class="fa-solid fa-lock-open fa-2x"></i>
+                    </span>
+                    <h3 class="fw-bold mb-1">Account Login</h3>
+                    <p class="text-muted small">Sign in to access your role-based dashboard</p>
+                </div>
+
+                <form method="POST" action="{{ url_for('auth.login', next=request.args.get('next')) }}" id="login-form">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Email Address</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light text-muted"><i class="fa-solid fa-envelope"></i></span>
+                            <input type="email" name="email" id="email-field" class="form-control" placeholder="name@example.com" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold small">Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light text-muted"><i class="fa-solid fa-key"></i></span>
+                            <input type="password" name="password" id="password-field" class="form-control" placeholder="Enter your password" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
+                        <i class="fa-solid fa-right-to-bracket me-1"></i> Sign In
+                    </button>
+                </form>
+
+                <div class="text-center mt-3 small">
+                    Don't have an account? <a href="{{ url_for('auth.register') }}" class="text-primary fw-semibold">Register Here</a>
+                </div>
+
+                <!-- Viva / Demo Quick Fill Bar -->
+                <div class="demo-accounts-bar mt-4">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <small class="fw-bold text-dark"><i class="fa-solid fa-wand-magic-sparkles text-primary me-1"></i> Viva Quick-Fill Logins:</small>
+                        <span class="badge bg-light text-muted border">Password: password123</span>
+                    </div>
+                    <div class="d-grid gap-1">
+                        <button type="button" class="btn btn-sm btn-outline-secondary text-start" onclick="fillLogin('customer@demo.com', 'password123')">
+                            <i class="fa-solid fa-user text-primary me-1"></i> <strong>Customer:</strong> Rahul Sharma (customer@demo.com)
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary text-start" onclick="fillLogin('apollo@demo.com', 'password123')">
+                            <i class="fa-solid fa-shop text-success me-1"></i> <strong>Chemist 1:</strong> Apollo Pharmacy (apollo@demo.com)
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary text-start" onclick="fillLogin('sanjivani@demo.com', 'password123')">
+                            <i class="fa-solid fa-clinic-medical text-success me-1"></i> <strong>Chemist 2:</strong> Sanjivani Chemist (sanjivani@demo.com)
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary text-start" onclick="fillLogin('metro@demo.com', 'password123')">
+                            <i class="fa-solid fa-warehouse text-info me-1"></i> <strong>Supplier:</strong> Metro Wholesalers (metro@demo.com)
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary text-start" onclick="fillLogin('admin@demo.com', 'password123')">
+                            <i class="fa-solid fa-shield-halved text-danger me-1"></i> <strong>Admin:</strong> System Administrator (admin@demo.com)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function fillLogin(email, password) {
+    document.getElementById('email-field').value = email;
+    document.getElementById('password-field').value = password;
+    document.getElementById('login-form').submit();
+}
+</script>
+{% endblock %}
+

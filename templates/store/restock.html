@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+
+{% block title %}Wholesale Re-ordering - {{ store.store_name }} - MediCompare{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-1"><i class="fa-solid fa-truck-ramp-box text-primary me-2"></i>Wholesale Restock Hub</h3>
+            <p class="text-muted small mb-0">Direct B2B supply replenishment from verified wholesale distributors</p>
+        </div>
+        <a href="{{ url_for('store.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-arrow-left me-1"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Available Wholesale Supplies Grid -->
+    <div class="card p-4 shadow-sm border-0 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold mb-0">
+                <i class="fa-solid fa-boxes-packing text-teal me-1"></i> Available Wholesale Stock Listings
+            </h5>
+            {% if preselected_med_id %}
+            <a href="{{ url_for('store.restock') }}" class="badge bg-secondary text-decoration-none">Show All Suppliers</a>
+            {% endif %}
+        </div>
+
+        {% if available_supplies %}
+        <div class="row g-3">
+            {% for item in available_supplies %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 p-3 border card-hover">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <h6 class="fw-bold mb-0 text-dark">{{ item.medicine.name }}</h6>
+                            <small class="text-muted">{{ item.medicine.generic_name }} • {{ item.medicine.strength }}</small>
+                        </div>
+                        <span class="badge bg-info-subtle text-info border">Bulk Supply</span>
+                    </div>
+
+                    <div class="p-2 bg-light rounded my-2 small">
+                        <div class="fw-bold text-dark"><i class="fa-solid fa-warehouse text-primary me-1"></i> {{ item.supplier.company_name }}</div>
+                        <div class="text-muted"><i class="fa-solid fa-location-dot text-danger me-1"></i> {{ item.supplier.warehouse_address }}</div>
+                    </div>
+
+                    <div class="row g-1 align-items-center my-2">
+                        <div class="col-6">
+                            <span class="small text-muted d-block">Wholesale Rate</span>
+                            <span class="fw-bold text-teal fs-5">{{ item.wholesale_rate | currency }}</span>
+                            <small class="text-muted d-block">MRP: {{ item.medicine.default_mrp | currency }}</small>
+                        </div>
+                        <div class="col-6 text-end">
+                            <span class="badge bg-light text-dark border d-block mb-1">MOQ: {{ item.min_order_qty }} units</span>
+                            <small class="text-success fw-bold">{{ item.stock_units }} units in warehouse</small>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-sm btn-primary w-100 mt-auto" data-bs-toggle="modal" data-bs-target="#orderModal{{ item.id }}">
+                        <i class="fa-solid fa-cart-plus me-1"></i> Place Purchase Order
+                    </button>
+                </div>
+            </div>
+
+            <!-- Order Modal -->
+            <div class="modal fade" id="orderModal{{ item.id }}" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <form action="{{ url_for('store.restock') }}" method="POST">
+                            <input type="hidden" name="supplier_id" value="{{ item.supplier_id }}">
+                            <input type="hidden" name="medicine_id" value="{{ item.medicine_id }}">
+                            <input type="hidden" name="unit_price" value="{{ item.wholesale_rate }}">
+
+                            <div class="modal-header">
+                                <h5 class="modal-title fw-bold">Purchase Order: {{ item.medicine.name }}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="p-3 bg-light rounded mb-3 small">
+                                    <div class="fw-bold">Supplier: {{ item.supplier.company_name }}</div>
+                                    <div>Wholesale Rate: <strong>{{ item.wholesale_rate | currency }}</strong> per unit</div>
+                                    <div>Minimum Order Quantity: <strong>{{ item.min_order_qty }} units</strong></div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Quantity to Order (Units):</label>
+                                    <input type="number" name="quantity" class="form-control" value="{{ item.min_order_qty }}" min="{{ item.min_order_qty }}" required>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Delivery Instructions / Remarks:</label>
+                                    <input type="text" name="notes" class="form-control" placeholder="e.g. Deliver between 10 AM - 2 PM">
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fa-solid fa-paper-plane me-1"></i> Dispatch Purchase Order
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted text-center py-4 mb-0">No wholesale listings available currently.</p>
+        {% endif %}
+    </div>
+
+    <!-- Restock Orders History -->
+    <div class="card p-4 shadow-sm border-0">
+        <h5 class="fw-bold mb-3">
+            <i class="fa-solid fa-clock-rotate-left text-primary me-1"></i> Your Wholesale Re-Order History
+        </h5>
+
+        {% if orders %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small">
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Wholesale Supplier</th>
+                        <th>Medicine</th>
+                        <th>Quantity</th>
+                        <th>Total Amount</th>
+                        <th>Status</th>
+                        <th>Order Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td><strong>#RO-{{ order.id }}</strong></td>
+                        <td>
+                            <strong class="text-dark d-block">{{ order.supplier.company_name }}</strong>
+                            <small class="text-muted"><i class="fa-solid fa-phone"></i> {{ order.supplier.phone }}</small>
+                        </td>
+                        <td>{{ order.medicine.name }}</td>
+                        <td>{{ order.quantity }} units</td>
+                        <td class="fw-bold text-teal">{{ order.total_amount | currency }}</td>
+                        <td>
+                            {% if order.status == 'Delivered' %}
+                            <span class="badge bg-success">Delivered & Stocked</span>
+                            {% elif order.status == 'Dispatched' %}
+                            <span class="badge bg-primary">In-Transit / Dispatched</span>
+                            {% elif order.status == 'Accepted' %}
+                            <span class="badge bg-info">Accepted by Supplier</span>
+                            {% elif order.status == 'Cancelled' %}
+                            <span class="badge bg-danger">Cancelled</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">Pending Supplier Approval</span>
+                            {% endif %}
+                        </td>
+                        <td class="small text-muted">{{ order.created_at.strftime('%d %b %Y, %I:%M %p') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted text-center py-3 mb-0">You have not placed any wholesale orders yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+
+{% block title %}Chemist Dashboard - {{ store.store_name }} - MediCompare{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Store Header Banner -->
+    <div class="card p-4 mb-4 shadow-sm border-0 bg-white">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <div>
+                <span class="badge bg-success-subtle text-success border border-success-subtle mb-1">
+                    <i class="fa-solid fa-circle-check"></i> Licensed Chemist Portal
+                </span>
+                <h3 class="fw-bold mb-0 text-dark">{{ store.store_name }}</h3>
+                <small class="text-muted">
+                    <i class="fa-solid fa-location-dot text-danger me-1"></i> {{ store.address }}, {{ store.area }}, {{ store.city }} • 
+                    <i class="fa-solid fa-id-card text-primary me-1"></i> Lic: {{ store.license_no }}
+                </small>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('store.inventory') }}" class="btn btn-outline-primary btn-sm">
+                    <i class="fa-solid fa-boxes-stacked me-1"></i> Manage Inventory
+                </a>
+                <a href="{{ url_for('store.restock') }}" class="btn btn-primary btn-sm">
+                    <i class="fa-solid fa-truck-ramp-box me-1"></i> Order from Wholesaler
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card p-3 border-0 shadow-sm text-center">
+                <span class="text-muted small">Total Medicines</span>
+                <h2 class="fw-bold text-primary mb-0">{{ total_medicines }}</h2>
+                <small class="text-muted">Stocked Brands</small>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card p-3 border-0 shadow-sm text-center">
+                <span class="text-muted small">Total Units In Stock</span>
+                <h2 class="fw-bold text-success mb-0">{{ total_units }}</h2>
+                <small class="text-muted">Total inventory count</small>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card p-3 border-0 shadow-sm text-center {% if low_stock_count > 0 %}border-danger border{% endif %}">
+                <span class="text-muted small">Low-Stock Warnings</span>
+                <h2 class="fw-bold {% if low_stock_count > 0 %}text-danger{% else %}text-muted{% endif %} mb-0">{{ low_stock_count }}</h2>
+                <small class="{% if low_stock_count > 0 %}text-danger fw-bold{% else %}text-muted{% endif %}">
+                    {% if low_stock_count > 0 %}Action Required!{% else %}Adequate stock{% endif %}
+                </small>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card p-3 border-0 shadow-sm text-center">
+                <span class="text-muted small">Pending Pickups</span>
+                <h2 class="fw-bold text-warning mb-0">{{ pending_reservations }}</h2>
+                <small class="text-muted">Customer bookings</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Urgent Low Stock Alerts -->
+    {% if low_stock_items %}
+    <div class="card p-4 mb-4 shadow-sm border-danger border">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h5 class="fw-bold text-danger mb-0">
+                    <i class="fa-solid fa-triangle-exclamation me-2"></i> Low-Stock Critical Alerts
+                </h5>
+                <small class="text-muted">These medicines have dropped to or below their minimum reorder threshold.</small>
+            </div>
+            <a href="{{ url_for('store.restock') }}" class="btn btn-sm btn-danger">
+                <i class="fa-solid fa-cart-flatbed me-1"></i> Bulk Re-order All
+            </a>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small">
+                    <tr>
+                        <th>Medicine</th>
+                        <th>Generic Salt</th>
+                        <th>Remaining Stock</th>
+                        <th>Selling Price</th>
+                        <th>Batch / Expiry</th>
+                        <th class="text-end">Supply Chain Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in low_stock_items %}
+                    <tr>
+                        <td>
+                            <strong class="text-dark">{{ item.medicine.name }}</strong>
+                            <small class="text-muted d-block">{{ item.medicine.strength }}</small>
+                        </td>
+                        <td><span class="badge bg-light text-muted border">{{ item.medicine.generic_name }}</span></td>
+                        <td>
+                            <span class="badge badge-low-stock fs-6 px-2 py-1">
+                                {{ item.stock_quantity }} units left
+                            </span>
+                            <small class="text-muted d-block">Threshold: {{ item.min_threshold }}</small>
+                        </td>
+                        <td class="fw-bold text-teal">{{ item.selling_price | currency }}</td>
+                        <td class="small text-muted">{{ item.batch_no or 'N/A' }} (Exp: {{ item.expiry_date or 'N/A' }})</td>
+                        <td class="text-end">
+                            <a href="{{ url_for('store.restock', med_id=item.medicine_id) }}" class="btn btn-sm btn-outline-danger fw-bold">
+                                <i class="fa-solid fa-truck-fast me-1"></i> Order from Wholesaler
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent Customer Reservations -->
+    <div class="card p-4 shadow-sm border-0">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold mb-0">
+                <i class="fa-solid fa-clipboard-list text-primary me-2"></i> Recent Customer Pickup Requests
+            </h5>
+            <a href="{{ url_for('store.reservations') }}" class="btn btn-sm btn-outline-primary">View All Bookings</a>
+        </div>
+
+        {% if recent_reservations %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small">
+                    <tr>
+                        <th>Booking Code</th>
+                        <th>Customer</th>
+                        <th>Medicine</th>
+                        <th>Quantity</th>
+                        <th>Total Payable</th>
+                        <th>Status</th>
+                        <th class="text-end">Quick Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for res in recent_reservations %}
+                    <tr>
+                        <td><strong class="font-monospace text-primary">{{ res.reservation_code }}</strong></td>
+                        <td>
+                            <div class="fw-semibold text-dark">{{ res.customer.full_name }}</div>
+                            <small class="text-muted"><i class="fa-solid fa-phone"></i> {{ res.customer.phone or 'N/A' }}</small>
+                        </td>
+                        <td>{{ res.medicine.name }}</td>
+                        <td>{{ res.quantity }} units</td>
+                        <td class="fw-bold text-teal">{{ res.total_price | currency }}</td>
+                        <td>
+                            {% if res.status == 'Ready for Pickup' %}
+                            <span class="badge bg-success">Ready</span>
+                            {% elif res.status == 'Completed' %}
+                            <span class="badge bg-secondary">Completed</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">Reserved</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            {% if res.status == 'Reserved' %}
+                            <form action="{{ url_for('store.update_reservation_status', res_id=res.id) }}" method="POST" class="d-inline">
+                                <input type="hidden" name="status" value="Ready for Pickup">
+                                <button type="submit" class="btn btn-sm btn-success">
+                                    <i class="fa-solid fa-bell me-1"></i> Mark Ready
+                                </button>
+                            </form>
+                            {% elif res.status == 'Ready for Pickup' %}
+                            <form action="{{ url_for('store.update_reservation_status', res_id=res.id) }}" method="POST" class="d-inline">
+                                <input type="hidden" name="status" value="Completed">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fa-solid fa-check me-1"></i> Hand Over
+                                </button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted small text-center mb-0 py-3">No active customer reservations.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

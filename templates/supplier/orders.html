@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+
+{% block title %}Pharmacy Purchase Orders - {{ supplier.company_name }} - MediCompare{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h3 class="fw-bold mb-1"><i class="fa-solid fa-truck-fast text-primary me-2"></i>Pharmacy Restock Purchase Orders</h3>
+            <p class="text-muted small mb-0">Review orders from retail chemists and update dispatch / delivery status</p>
+        </div>
+        <div class="btn-group">
+            <a href="{{ url_for('supplier.orders', status='all') }}" class="btn btn-sm {% if status_filter == 'all' %}btn-primary{% else %}btn-outline-secondary{% endif %}">All</a>
+            <a href="{{ url_for('supplier.orders', status='Pending') }}" class="btn btn-sm {% if status_filter == 'Pending' %}btn-warning text-dark{% else %}btn-outline-warning text-dark{% endif %}">Pending</a>
+            <a href="{{ url_for('supplier.orders', status='Accepted') }}" class="btn btn-sm {% if status_filter == 'Accepted' %}btn-info text-white{% else %}btn-outline-info{% endif %}">Accepted</a>
+            <a href="{{ url_for('supplier.orders', status='Dispatched') }}" class="btn btn-sm {% if status_filter == 'Dispatched' %}btn-primary{% else %}btn-outline-primary{% endif %}">In-Transit</a>
+            <a href="{{ url_for('supplier.orders', status='Delivered') }}" class="btn btn-sm {% if status_filter == 'Delivered' %}btn-success{% else %}btn-outline-success{% endif %}">Delivered</a>
+        </div>
+    </div>
+
+    <!-- Alert Note -->
+    <div class="alert alert-info border-info-subtle small d-flex align-items-center gap-2 mb-4">
+        <i class="fa-solid fa-circle-info fa-lg text-info"></i>
+        <span><strong>Automated Inventory Sync:</strong> Marking an order as <strong>"Delivered"</strong> automatically credits the ordered units directly into the receiving pharmacy's live stock!</span>
+    </div>
+
+    <!-- Orders Table -->
+    <div class="card p-4 shadow-sm border-0">
+        {% if orders %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small">
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Medical Store</th>
+                        <th>Medicine</th>
+                        <th>Quantity</th>
+                        <th>Rate / Total</th>
+                        <th>Store Remarks</th>
+                        <th>Current Status</th>
+                        <th class="text-end">Lifecycle Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td>
+                            <strong class="text-dark">#RO-{{ order.id }}</strong>
+                            <small class="text-muted d-block">{{ order.created_at.strftime('%d %b, %I:%M %p') }}</small>
+                        </td>
+                        <td>
+                            <strong class="text-dark d-block">{{ order.store.store_name }}</strong>
+                            <small class="text-muted">
+                                <i class="fa-solid fa-location-dot text-danger"></i> {{ order.store.area }}, {{ order.store.city }}<br/>
+                                <i class="fa-solid fa-phone text-primary"></i> {{ order.store.phone }}
+                            </small>
+                        </td>
+                        <td>
+                            <span class="fw-semibold text-dark">{{ order.medicine.name }}</span>
+                            <small class="text-muted d-block">{{ order.medicine.generic_name }} ({{ order.medicine.strength }})</small>
+                        </td>
+                        <td><span class="badge bg-light text-dark border fs-6">{{ order.quantity }} units</span></td>
+                        <td>
+                            <small class="text-muted d-block">@ {{ order.unit_price | currency }}</small>
+                            <strong class="text-teal fs-6">{{ order.total_amount | currency }}</strong>
+                        </td>
+                        <td class="small text-muted">{{ order.notes or '-' }}</td>
+                        <td>
+                            {% if order.status == 'Delivered' %}
+                            <span class="badge bg-success">Delivered & Stocked</span>
+                            {% elif order.status == 'Dispatched' %}
+                            <span class="badge bg-primary">In-Transit / Dispatched</span>
+                            {% elif order.status == 'Accepted' %}
+                            <span class="badge bg-info">Accepted</span>
+                            {% elif order.status == 'Cancelled' %}
+                            <span class="badge bg-danger">Cancelled</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group">
+                                {% if order.status == 'Pending' %}
+                                <form action="{{ url_for('supplier.update_order_status', order_id=order.id) }}" method="POST" class="d-inline">
+                                    <input type="hidden" name="status" value="Accepted">
+                                    <button type="submit" class="btn btn-sm btn-info text-white">Accept</button>
+                                </form>
+                                {% endif %}
+
+                                {% if order.status == 'Accepted' %}
+                                <form action="{{ url_for('supplier.update_order_status', order_id=order.id) }}" method="POST" class="d-inline">
+                                    <input type="hidden" name="status" value="Dispatched">
+                                    <button type="submit" class="btn btn-sm btn-primary">Dispatch</button>
+                                </form>
+                                {% endif %}
+
+                                {% if order.status == 'Dispatched' %}
+                                <form action="{{ url_for('supplier.update_order_status', order_id=order.id) }}" method="POST" class="d-inline">
+                                    <input type="hidden" name="status" value="Delivered">
+                                    <button type="submit" class="btn btn-sm btn-success">Mark Delivered</button>
+                                </form>
+                                {% endif %}
+
+                                {% if order.status in ['Pending', 'Accepted'] %}
+                                <form action="{{ url_for('supplier.update_order_status', order_id=order.id) }}" method="POST" onsubmit="return confirm('Cancel this purchase order?');" class="d-inline ms-1">
+                                    <input type="hidden" name="status" value="Cancelled">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-xmark"></i></button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-4 text-center text-muted">
+            <i class="fa-solid fa-truck-fast fa-3x mb-2 text-secondary"></i>
+            <p class="mb-0">No purchase orders found under this filter.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

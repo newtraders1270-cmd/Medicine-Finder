@@ -1,0 +1,224 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ medicine.name }} - Price Comparison & Availability - MediCompare{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb small">
+            <li class="breadcrumb-item"><a href="{{ url_for('customer.index') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('customer.search', q=medicine.generic_name) }}">{{ medicine.category }}</a></li>
+            <li class="breadcrumb-item active">{{ medicine.name }}</li>
+        </ol>
+    </nav>
+
+    <!-- Medicine Header Card -->
+    <div class="card p-4 mb-4 shadow-sm border-0">
+        <div class="row g-4 align-items-center">
+            <div class="col-lg-8">
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    {% if medicine.is_generic %}
+                    <span class="badge badge-generic px-3 py-1">Generic Bioequivalent</span>
+                    {% else %}
+                    <span class="badge badge-brand px-3 py-1">Branded Medicine</span>
+                    {% endif %}
+                    <span class="badge bg-secondary-subtle text-secondary border">{{ medicine.category }}</span>
+                    {% if medicine.prescription_required %}
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                        <i class="fa-solid fa-file-prescription me-1"></i> Prescription Required (Rx)
+                    </span>
+                    {% else %}
+                    <span class="badge bg-success-subtle text-success">
+                        <i class="fa-solid fa-check me-1"></i> Over The Counter (OTC)
+                    </span>
+                    {% endif %}
+                </div>
+
+                <h2 class="fw-bold mb-1">{{ medicine.name }}</h2>
+                <h5 class="text-muted fw-normal mb-3">
+                    <i class="fa-solid fa-flask text-teal me-1"></i> Active Salt: <strong>{{ medicine.generic_name }}</strong> ({{ medicine.strength }})
+                </h5>
+
+                <div class="row g-3 text-secondary small mb-3">
+                    <div class="col-sm-6">
+                        <strong class="d-block text-dark">Manufacturer:</strong>
+                        {{ medicine.manufacturer or 'Certified Pharmaceutical' }}
+                    </div>
+                    <div class="col-sm-6">
+                        <strong class="d-block text-dark">Dosage Guidelines:</strong>
+                        {{ medicine.dosage_info or 'Take strictly as advised by medical practitioner' }}
+                    </div>
+                </div>
+
+                <div class="p-3 bg-light rounded-3">
+                    <strong class="d-block text-dark small mb-1"><i class="fa-solid fa-stethoscope text-primary me-1"></i> Therapeutic Indications / Uses:</strong>
+                    <p class="small text-muted mb-0">{{ medicine.uses }}</p>
+                </div>
+            </div>
+
+            <!-- Price Summary Widget -->
+            <div class="col-lg-4 text-center">
+                <div class="p-3 bg-light rounded-3 border">
+                    <span class="text-muted small d-block mb-1">Standard Government MRP</span>
+                    <h3 class="text-secondary fw-bold">{{ medicine.default_mrp | currency }}</h3>
+                    <hr class="my-2">
+                    <div class="row g-1">
+                        <div class="col-6">
+                            <span class="small text-muted d-block">Best Store Rate</span>
+                            <span class="fw-bold text-success fs-5">{{ min_price | currency }}</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="small text-muted d-block">Total In Stock</span>
+                            <span class="fw-bold text-primary fs-5">{{ total_stock }} units</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Store Comparison & Map Row -->
+    <div class="row g-4 mb-4">
+        <!-- Stores Comparison Table -->
+        <div class="col-lg-7">
+            <div class="card p-4 shadow-sm border-0 h-100">
+                <h5 class="fw-bold mb-3">
+                    <i class="fa-solid fa-table-list text-primary me-1"></i> 
+                    Nearby Store Availability & Price Comparison
+                </h5>
+
+                {% if stock_entries %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light small">
+                            <tr>
+                                <th>Pharmacy</th>
+                                <th>Area</th>
+                                <th>Price</th>
+                                <th>Availability</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for inv in stock_entries %}
+                            <tr>
+                                <td>
+                                    <strong class="d-block text-dark">{{ inv.store.store_name }}</strong>
+                                    <small class="text-muted"><i class="fa-solid fa-phone"></i> {{ inv.store.phone }}</small>
+                                </td>
+                                <td><span class="badge bg-light text-dark border">{{ inv.store.area }}</span></td>
+                                <td>
+                                    <span class="fw-bold text-teal">{{ inv.selling_price | currency }}</span>
+                                    {% if inv.discount_percent > 0 %}
+                                    <small class="text-success d-block fw-semibold">{{ inv.discount_percent }}% OFF</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if inv.stock_quantity > 10 %}
+                                    <span class="badge bg-success-subtle text-success">In Stock ({{ inv.stock_quantity }})</span>
+                                    {% elif inv.stock_quantity > 0 %}
+                                    <span class="badge badge-low-stock">Low Stock ({{ inv.stock_quantity }})</span>
+                                    {% else %}
+                                    <span class="badge bg-danger-subtle text-danger">Out of Stock</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if inv.stock_quantity > 0 %}
+                                    <form action="{{ url_for('customer.reserve_medicine') }}" method="POST" class="d-inline">
+                                        <input type="hidden" name="inventory_id" value="{{ inv.id }}">
+                                        <input type="hidden" name="quantity" value="1">
+                                        <button type="submit" class="btn btn-sm btn-primary">
+                                            Reserve
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                    <button class="btn btn-sm btn-secondary" disabled>Unavailable</button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-4 text-center text-muted">
+                    <i class="fa-solid fa-box-open fa-3x mb-2 text-secondary"></i>
+                    <p class="mb-0">Currently no registered stores have this medicine in stock.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Interactive Map Column -->
+        <div class="col-lg-5">
+            <div class="card p-3 shadow-sm border-0 h-100">
+                <h6 class="fw-bold mb-2">
+                    <i class="fa-solid fa-map-location-dot text-danger me-1"></i> Pharmacies Map View
+                </h6>
+                <div id="map" style="height: 380px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Equivalent & Generic Alternatives Section -->
+    {% if alternatives %}
+    <div class="card p-4 shadow-sm border-0">
+        <h5 class="fw-bold mb-3">
+            <i class="fa-solid fa-code-compare text-success me-1"></i> 
+            Other Medicines with Same Salt Composition ({{ medicine.generic_name }})
+        </h5>
+        <div class="row g-3">
+            {% for alt in alternatives %}
+            <div class="col-md-4">
+                <div class="card h-100 p-3 card-hover border">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <strong class="text-dark">{{ alt.name }}</strong>
+                        {% if alt.is_generic %}
+                        <span class="badge badge-generic">Generic</span>
+                        {% else %}
+                        <span class="badge badge-brand">Brand</span>
+                        {% endif %}
+                    </div>
+                    <small class="text-muted mb-2 d-block">{{ alt.manufacturer }} • {{ alt.strength }}</small>
+                    <div class="mt-auto d-flex justify-content-between align-items-center pt-2 border-top">
+                        <span class="fw-bold text-teal">{{ alt.default_mrp | currency }}</span>
+                        <a href="{{ url_for('customer.medicine_detail', medicine_id=alt.id) }}" class="btn btn-sm btn-outline-primary">
+                            Compare Stores
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    fetch('/api/medicine-stores/{{ medicine.id }}')
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.length > 0) {
+                const stores = data.map(s => ({
+                    lat: s.lat,
+                    lng: s.lng,
+                    name: s.store_name,
+                    address: s.area,
+                    phone: 'In Stock: ' + s.stock_quantity,
+                    hours: 'Price: ₹' + s.selling_price.toFixed(2)
+                }));
+                initStoreLocatorMap(stores);
+            } else {
+                // Default city view
+                initStoreLocatorMap([{ lat: 19.0760, lng: 72.8777, name: 'Mumbai Central', address: 'No stores currently in stock', phone: '', hours: '' }]);
+            }
+        })
+        .catch(err => console.error(err));
+});
+</script>
+{% endblock %}
+

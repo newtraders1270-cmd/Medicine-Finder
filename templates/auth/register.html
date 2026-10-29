@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+
+{% block title %}Register - MediCompare{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6 col-md-8">
+            <div class="card shadow-sm border-0 p-4">
+                <div class="text-center mb-4">
+                    <span class="p-3 bg-primary-subtle text-primary rounded-circle d-inline-block mb-2">
+                        <i class="fa-solid fa-user-plus fa-2x"></i>
+                    </span>
+                    <h3 class="fw-bold mb-1">Create an Account</h3>
+                    <p class="text-muted small">Register as a Customer, Medical Store Owner, or Wholesale Supplier</p>
+                </div>
+
+                <form method="POST" action="{{ url_for('auth.register') }}">
+                    <!-- Role Selection -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold small">Choose Account Role:</label>
+                        <div class="row g-2">
+                            <div class="col-4">
+                                <input type="radio" class="btn-check" name="role" id="role-customer" value="customer" checked onchange="toggleRoleFields()">
+                                <label class="btn btn-outline-primary w-100 py-2 small" for="role-customer">
+                                    <i class="fa-solid fa-user d-block mb-1"></i> Customer
+                                </label>
+                            </div>
+                            <div class="col-4">
+                                <input type="radio" class="btn-check" name="role" id="role-store" value="store" onchange="toggleRoleFields()">
+                                <label class="btn btn-outline-success w-100 py-2 small" for="role-store">
+                                    <i class="fa-solid fa-shop d-block mb-1"></i> Chemist / Store
+                                </label>
+                            </div>
+                            <div class="col-4">
+                                <input type="radio" class="btn-check" name="role" id="role-supplier" value="supplier" onchange="toggleRoleFields()">
+                                <label class="btn btn-outline-info w-100 py-2 small" for="role-supplier">
+                                    <i class="fa-solid fa-warehouse d-block mb-1"></i> Wholesaler
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Common Fields -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Full Name / Contact Person</label>
+                        <input type="text" name="full_name" class="form-control" placeholder="e.g. Rajesh Gupta" required>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Email Address</label>
+                            <input type="email" name="email" class="form-control" placeholder="name@example.com" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Mobile / Phone</label>
+                            <input type="text" name="phone" class="form-control" placeholder="9820011223" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Password</label>
+                        <input type="password" name="password" class="form-control" placeholder="Create a secure password" required>
+                    </div>
+
+                    <!-- Medical Store Specific Fields -->
+                    <div id="store-fields" class="p-3 bg-light rounded-3 mb-3 border border-success-subtle" style="display: none;">
+                        <h6 class="fw-bold text-success mb-3"><i class="fa-solid fa-clinic-medical me-1"></i> Medical Store Details</h6>
+                        <div class="mb-2">
+                            <label class="form-label small">Pharmacy / Store Name</label>
+                            <input type="text" name="store_name" class="form-control form-control-sm" placeholder="e.g. City Health Pharmacy">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small">Pharmacy Drug License No.</label>
+                            <input type="text" name="license_no" class="form-control form-control-sm" placeholder="e.g. MH-TZ4-2024-1234">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small">Store Address</label>
+                            <input type="text" name="address" class="form-control form-control-sm" placeholder="Shop 2, Main Market Road">
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="form-label small">City</label>
+                                <input type="text" name="city" class="form-control form-control-sm" value="Mumbai">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small">Area / Locality</label>
+                                <input type="text" name="area" class="form-control form-control-sm" placeholder="e.g. Andheri West">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Wholesaler Specific Fields -->
+                    <div id="supplier-fields" class="p-3 bg-light rounded-3 mb-3 border border-info-subtle" style="display: none;">
+                        <h6 class="fw-bold text-info mb-3"><i class="fa-solid fa-industry me-1"></i> Wholesale Company Details</h6>
+                        <div class="mb-2">
+                            <label class="form-label small">Wholesale Company Name</label>
+                            <input type="text" name="company_name" class="form-control form-control-sm" placeholder="e.g. Apex Drug Distributors">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small">Wholesale Drug License No.</label>
+                            <input type="text" name="supplier_license" class="form-control form-control-sm" placeholder="e.g. WDL-MH-2024-5678">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small">Warehouse Address</label>
+                            <input type="text" name="warehouse_address" class="form-control form-control-sm" placeholder="Plot 4, Industrial Zone, Bhiwandi">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold mt-2">
+                        <i class="fa-solid fa-circle-check me-1"></i> Complete Registration
+                    </button>
+                </form>
+
+                <div class="text-center mt-3 small">
+                    Already registered? <a href="{{ url_for('auth.login') }}" class="text-primary fw-semibold">Sign In</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleRoleFields() {
+    const isStore = document.getElementById('role-store').checked;
+    const isSupplier = document.getElementById('role-supplier').checked;
+
+    document.getElementById('store-fields').style.display = isStore ? 'block' : 'none';
+    document.getElementById('supplier-fields').style.display = isSupplier ? 'block' : 'none';
+}
+</script>
+{% endblock %}
+

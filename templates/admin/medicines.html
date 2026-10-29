@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+
+{% block title %}Master Medicine Directory - Admin - MediCompare{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h3 class="fw-bold mb-1"><i class="fa-solid fa-pills text-primary me-2"></i>Master Medicine Directory</h3>
+            <p class="text-muted small mb-0">Central database of brand medicines, generic bioequivalent salts, and MRP regulations</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMedModal">
+            <i class="fa-solid fa-plus me-1"></i> Add New Medicine
+        </button>
+    </div>
+
+    <!-- Search Toolbar -->
+    <div class="card p-3 mb-4 shadow-sm border-0">
+        <form action="{{ url_for('admin.medicines') }}" method="GET" class="d-flex gap-2">
+            <input type="text" name="q" value="{{ search_q }}" class="form-control" placeholder="Search master directory by name, salt, or manufacturer...">
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+            {% if search_q %}
+            <a href="{{ url_for('admin.medicines') }}" class="btn btn-outline-secondary">Clear</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Medicines Table -->
+    <div class="card p-4 shadow-sm border-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small">
+                    <tr>
+                        <th>Medicine</th>
+                        <th>Generic Salt</th>
+                        <th>Category</th>
+                        <th>Manufacturer</th>
+                        <th>Govt MRP</th>
+                        <th>Type</th>
+                        <th>Rx?</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in medicines %}
+                    <tr>
+                        <td>
+                            <strong class="text-dark d-block">{{ m.name }}</strong>
+                            <small class="text-muted">{{ m.strength }}</small>
+                        </td>
+                        <td><span class="badge bg-light text-muted border">{{ m.generic_name }}</span></td>
+                        <td>{{ m.category }}</td>
+                        <td class="small">{{ m.manufacturer or 'N/A' }}</td>
+                        <td><strong class="text-teal">{{ m.default_mrp | currency }}</strong></td>
+                        <td>
+                            {% if m.is_generic %}
+                            <span class="badge badge-generic">Generic</span>
+                            {% else %}
+                            <span class="badge badge-brand">Brand</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if m.prescription_required %}
+                            <span class="badge bg-danger-subtle text-danger">Rx</span>
+                            {% else %}
+                            <span class="badge bg-success-subtle text-success">OTC</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editMedModal{{ m.id }}">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
+                                <form action="{{ url_for('admin.delete_medicine', med_id=m.id) }}" method="POST" onsubmit="return confirm('Delete {{ m.name }} from master database?');" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-trash"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Edit Modal -->
+                    <div class="modal fade" id="editMedModal{{ m.id }}" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <form action="{{ url_for('admin.edit_medicine', med_id=m.id) }}" method="POST">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title fw-bold">Edit Medicine: {{ m.name }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="row g-2 mb-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label small fw-semibold">Medicine Name</label>
+                                                <input type="text" name="name" class="form-control" value="{{ m.name }}" required>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label small fw-semibold">Generic / Salt Composition</label>
+                                                <input type="text" name="generic_name" class="form-control" value="{{ m.generic_name }}" required>
+                                            </div>
+                                        </div>
+
+                                        <div class="row g-2 mb-3">
+                                            <div class="col-md-4">
+                                                <label class="form-label small fw-semibold">Strength</label>
+                                                <input type="text" name="strength" class="form-control" value="{{ m.strength }}" required>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label small fw-semibold">Category</label>
+                                                <select name="category" class="form-select">
+                                                    <option value="Tablet" {% if m.category == 'Tablet' %}selected{% endif %}>Tablet</option>
+                                                    <option value="Syrup" {% if m.category == 'Syrup' %}selected{% endif %}>Syrup</option>
+                                                    <option value="Capsule" {% if m.category == 'Capsule' %}selected{% endif %}>Capsule</option>
+                                                    <option value="Ointment" {% if m.category == 'Ointment' %}selected{% endif %}>Ointment</option>
+                                                    <option value="Injection" {% if m.category == 'Injection' %}selected{% endif %}>Injection</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label small fw-semibold">Govt MRP (₹)</label>
+                                                <input type="number" step="0.5" name="default_mrp" class="form-control" value="{{ m.default_mrp }}" required>
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label small fw-semibold">Manufacturer</label>
+                                            <input type="text" name="manufacturer" class="form-control" value="{{ m.manufacturer or '' }}">
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label small fw-semibold">Therapeutic Uses</label>
+                                            <textarea name="uses" class="form-control" rows="2">{{ m.uses or '' }}</textarea>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label small fw-semibold">Dosage Info</label>
+                                            <input type="text" name="dosage_info" class="form-control" value="{{ m.dosage_info or '' }}">
+                                        </div>
+
+                                        <div class="d-flex gap-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="prescription_required" value="1" id="editRx{{ m.id }}" {% if m.prescription_required %}checked{% endif %}>
+                                                <label class="form-check-label small" for="editRx{{ m.id }}">Prescription Required (Rx)</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="is_generic" value="1" id="editGen{{ m.id }}" {% if m.is_generic %}checked{% endif %}>
+                                                <label class="form-check-label small" for="editGen{{ m.id }}">Is Pure Generic Bioequivalent</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add Medicine Modal -->
+<div class="modal fade" id="addMedModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form action="{{ url_for('admin.medicines') }}" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Add Medicine to Master Catalog</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Medicine Brand Name</label>
+                            <input type="text" name="name" class="form-control" placeholder="e.g. Dolo 650" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Generic / Salt Composition</label>
+                            <input type="text" name="generic_name" class="form-control" placeholder="e.g. Paracetamol" required>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Strength</label>
+                            <input type="text" name="strength" class="form-control" placeholder="e.g. 650 mg" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Category</label>
+                            <select name="category" class="form-select">
+                                <option value="Tablet">Tablet</option>
+                                <option value="Syrup">Syrup</option>
+                                <option value="Capsule">Capsule</option>
+                                <option value="Ointment">Ointment</option>
+                                <option value="Injection">Injection</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Govt Standard MRP (₹)</label>
+                            <input type="number" step="0.5" name="default_mrp" class="form-control" placeholder="33.50" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Manufacturer</label>
+                        <input type="text" name="manufacturer" class="form-control" placeholder="e.g. Micro Labs">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Therapeutic Uses</label>
+                        <textarea name="uses" class="form-control" rows="2" placeholder="e.g. Fever relief, Mild body pain, Headache"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Dosage Info</label>
+                        <input type="text" name="dosage_info" class="form-control" placeholder="e.g. 1 tablet every 6 hours after meals">
+                    </div>
+
+                    <div class="d-flex gap-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="prescription_required" value="1" id="addRx">
+                            <label class="form-check-label small" for="addRx">Prescription Required (Rx)</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="is_generic" value="1" id="addGen">
+                            <label class="form-check-label small" for="addGen">Is Pure Generic Bioequivalent</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Medicine</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

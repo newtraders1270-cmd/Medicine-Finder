@@ -1,0 +1,238 @@
+{% extends 'base.html' %}
+
+{% block title %}Search Results for "{{ query }}" - Medicine Availability Finder{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Top Pill Search Bar -->
+    <div class="pill-search-container mb-4">
+        <form action="{{ url_for('customer.search') }}" method="GET">
+            <div class="pill-search-box">
+                <input type="text" name="q" id="medicine-search-input" class="pill-search-input" 
+                    value="{{ query }}" placeholder="Search medicine... e.g. Paracetamol" autocomplete="off" required>
+                <button type="submit" class="pill-search-btn">
+                    Search
+                </button>
+            </div>
+            <div id="suggestions-box"></div>
+        </form>
+    </div>
+
+    <!-- Filters & Sort Bar -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4 p-2 bg-light rounded-3 border">
+        <div class="d-flex align-items-center gap-2">
+            <span class="small fw-semibold text-muted ms-2">Filters:</span>
+            <form action="{{ url_for('customer.search') }}" method="GET" id="filter-form" class="d-flex gap-2">
+                <input type="hidden" name="q" value="{{ query }}">
+                
+                <select name="city" class="sort-select" onchange="document.getElementById('filter-form').submit()">
+                    <option value="">All Locations</option>
+                    {% for c in cities %}
+                    <option value="{{ c }}" {% if selected_city == c %}selected{% endif %}>{{ c }}</option>
+                    {% endfor %}
+                </select>
+
+                <div class="form-check form-check-inline align-self-center mb-0 ms-2">
+                    <input class="form-check-input" type="checkbox" name="in_stock" value="1" id="inStockCheck" 
+                        {% if in_stock_only %}checked{% endif %} onchange="document.getElementById('filter-form').submit()">
+                    <label class="form-check-label small fw-semibold" for="inStockCheck">In-Stock Only</label>
+                </div>
+            </form>
+        </div>
+
+        <div>
+            <select name="sort" class="sort-select" onchange="window.location.href='{{ url_for('customer.search') }}?q={{ query }}&city={{ selected_city }}&in_stock={{ 1 if in_stock_only else 0 }}&sort=' + this.value">
+                <option value="price_asc" {% if sort_by == 'price_asc' %}selected{% endif %}>Sort: Lowest price first</option>
+                <option value="price_desc" {% if sort_by == 'price_desc' %}selected{% endif %}>Sort: Highest price first</option>
+                <option value="stock_desc" {% if sort_by == 'stock_desc' %}selected{% endif %}>Sort: Highest stock first</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Generic Bioequivalent Advice Engine (Savings Box) -->
+    {% if generic_advice %}
+    {% for advice in generic_advice %}
+    <div class="card p-4 mb-4 border-0 rounded-4 shadow-sm" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1.5px solid #86efac !important;">
+        <div class="row align-items-center g-3">
+            <div class="col-md-8">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="badge bg-success px-2 py-1"><i class="fa-solid fa-leaf me-1"></i> Generic Advice</span>
+                    <strong class="text-dark">Cheaper Generic Alternative Available!</strong>
+                </div>
+                <p class="mb-2 text-secondary small">
+                    You searched for branded <strong>{{ advice.brand_medicine.name }}</strong> (MRP {{ advice.brand_medicine.default_mrp | currency }}). 
+                    The medically identical bioequivalent <strong>{{ advice.generic_medicine.name }}</strong> is available at 
+                    <span class="fw-bold" style="color: var(--primary-teal);">{{ advice.generic_inventory.store.store_name }}</span> for only 
+                    <span class="fw-bold text-success fs-6">{{ advice.generic_inventory.selling_price | currency }}</span>!
+                </p>
+                <span class="badge bg-white text-success border border-success fw-bold px-3 py-2">
+                    <i class="fa-solid fa-piggy-bank me-1"></i> You Save {{ advice.savings_amount | currency }} ({{ advice.savings_percent }}% OFF)
+                </span>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <a href="{{ url_for('customer.medicine_detail', medicine_id=advice.generic_medicine.id) }}" class="btn rounded-pill px-4 py-2" style="background-color: var(--teal-accent); color: white; font-weight: 600;">
+                    View Generic Option <i class="fa-solid fa-arrow-right ms-1"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- Best Price Store Callout -->
+    {% if best_price_item %}
+    <div class="alert border-0 rounded-3 shadow-sm d-flex align-items-center justify-content-between p-3 mb-4" style="background-color: #fefce8; border-left: 4px solid #eab308 !important;">
+        <div class="d-flex align-items-center gap-3">
+            <span class="p-2 bg-warning text-white rounded-circle"><i class="fa-solid fa-tag"></i></span>
+            <div>
+                <strong class="d-block text-dark">Lowest Price Pharmacy: {{ best_price_item.selling_price | currency }}</strong>
+                <small class="text-muted">Available at <strong>{{ best_price_item.store.store_name }}</strong> ({{ best_price_item.store.area }}) with {{ best_price_item.stock_quantity }} units in stock.</small>
+            </div>
+        </div>
+        <a href="#store-inv-{{ best_price_item.id }}" class="btn btn-sm btn-outline-dark rounded-pill px-3 fw-bold">Jump to Offer</a>
+    </div>
+    {% endif %}
+
+    <!-- Pharmacy Comparison Grid -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold mb-0 text-dark">
+            <i class="fa-solid fa-store me-1" style="color: var(--teal-accent);"></i> 
+            Pharmacies with Stock ({{ inventory_results | length }} stores found)
+        </h5>
+        <span class="text-muted small">Real-time availability</span>
+    </div>
+
+    {% if inventory_results %}
+    <div class="row g-4">
+        {% for item in inventory_results %}
+        <div class="col-md-6 col-lg-4" id="store-inv-{{ item.id }}">
+            <div class="card card-medicine h-100 p-3 shadow-sm">
+                <!-- Header -->
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark">{{ item.store.store_name }}</h6>
+                        <small class="text-muted">
+                            <i class="fa-solid fa-location-dot text-danger"></i> {{ item.store.area }}, {{ item.store.city }}
+                        </small>
+                    </div>
+                    {% if best_price_item and best_price_item.id == item.id %}
+                    <span class="badge bg-warning text-dark px-2 py-1 fw-bold rounded-pill"><i class="fa-solid fa-star me-1"></i> Best Price</span>
+                    {% endif %}
+                </div>
+
+                <!-- Medicine Details Box -->
+                <div class="p-2 bg-light rounded-3 my-2">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <strong class="text-truncate text-dark" style="max-width: 180px;">{{ item.medicine.name }}</strong>
+                        {% if item.medicine.is_generic %}
+                        <span class="badge badge-generic">Generic</span>
+                        {% else %}
+                        <span class="badge badge-brand">Brand</span>
+                        {% endif %}
+                    </div>
+                    <small class="text-muted d-block">{{ item.medicine.generic_name }} &bull; {{ item.medicine.strength }}</small>
+                </div>
+
+                <!-- Price and Availability -->
+                <div class="row g-2 align-items-center my-2">
+                    <div class="col-7">
+                        <span class="price-text">{{ item.selling_price | currency }}</span>
+                        {% if item.medicine.default_mrp > item.selling_price %}
+                        <span class="text-muted text-decoration-line-through small ms-1">{{ item.medicine.default_mrp | currency }}</span>
+                        <small class="text-success fw-bold d-block">{{ item.discount_percent }}% OFF</small>
+                        {% endif %}
+                    </div>
+                    <div class="col-5 text-end">
+                        {% if item.stock_quantity > 10 %}
+                        <span class="badge-in-stock">In Stock ({{ item.stock_quantity }})</span>
+                        {% elif item.stock_quantity > 0 %}
+                        <span class="badge-low-stock">Low Stock ({{ item.stock_quantity }})</span>
+                        {% else %}
+                        <span class="badge bg-danger-subtle text-danger px-2 py-1">Out of Stock</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="small text-muted mb-3 border-top pt-2">
+                    <div><i class="fa-solid fa-phone me-1" style="color: var(--teal-accent);"></i> {{ item.store.phone }}</div>
+                    <div><i class="fa-regular fa-clock me-1"></i> {{ item.store.opening_hours }}</div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="mt-auto d-flex gap-2">
+                    <a href="https://www.google.com/maps/dir/?api=1&destination={{ item.store.latitude }},{{ item.store.longitude }}" target="_blank" class="btn btn-outline-secondary btn-sm flex-fill rounded-pill">
+                        <i class="fa-solid fa-directions me-1"></i> Directions
+                    </a>
+
+                    {% if item.stock_quantity > 0 %}
+                    <button type="button" class="btn btn-sm flex-fill rounded-pill" style="background-color: var(--teal-accent); color: white; font-weight: 600;" data-bs-toggle="modal" data-bs-target="#reserveModal{{ item.id }}">
+                        <i class="fa-solid fa-receipt me-1"></i> Reserve
+                    </button>
+                    {% else %}
+                    <button class="btn btn-secondary btn-sm flex-fill rounded-pill" disabled>Out of Stock</button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Reservation Modal -->
+        <div class="modal fade" id="reserveModal{{ item.id }}" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content rounded-4">
+                    <form action="{{ url_for('customer.reserve_medicine') }}" method="POST">
+                        <input type="hidden" name="inventory_id" value="{{ item.id }}">
+                        <div class="modal-header">
+                            <h5 class="modal-title fw-bold">Reserve Medicine at Pharmacy</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="p-3 bg-light rounded-3 mb-3">
+                                <h6 class="fw-bold mb-1 text-dark">{{ item.medicine.name }}</h6>
+                                <p class="small text-muted mb-0">Pharmacy: <strong>{{ item.store.store_name }}</strong> ({{ item.store.area }})</p>
+                                <p class="small text-success fw-bold mb-0">Store Price: {{ item.selling_price | currency }} per unit</p>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Quantity to Reserve:</label>
+                                <input type="number" name="quantity" class="form-control" value="1" min="1" max="{{ item.stock_quantity }}" required>
+                                <small class="text-muted">Available stock: {{ item.stock_quantity }} units</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Pickup Note (Optional):</label>
+                                <input type="text" name="customer_notes" class="form-control" placeholder="e.g. Will pick up by 6 PM">
+                            </div>
+
+                            <div class="alert alert-info small mb-0 rounded-3">
+                                <i class="fa-solid fa-circle-info me-1"></i>
+                                You will receive an instant 6-digit booking voucher. Pay directly at the pharmacy counter upon pickup.
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn rounded-pill px-4" style="background-color: var(--teal-accent); color: white; font-weight: 600;">
+                                Confirm Reservation
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="card p-5 text-center border-0 shadow-sm rounded-4">
+        <i class="fa-solid fa-magnifying-glass fa-4x text-muted mb-3"></i>
+        <h5 class="fw-bold text-dark">No Pharmacies Found with "{{ query }}"</h5>
+        <p class="text-muted small mx-auto" style="max-width: 480px;">
+            Try searching for the active generic chemical salt (e.g. "Paracetamol" or "Azithromycin") or select "All Locations".
+        </p>
+        <div>
+            <a href="{{ url_for('customer.index') }}" class="btn rounded-pill px-4" style="background-color: var(--teal-accent); color: white; font-weight: 600;">
+                Back to Home
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
